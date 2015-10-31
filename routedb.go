@@ -8,8 +8,10 @@ package routedb
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/kellydunn/golang-geo"
 	"github.com/rndz/gpx"
@@ -114,4 +116,53 @@ func (db *Db) Nearest(lat, lon float64) (stop *Stop, err error) {
 // in the database. It returns a *Box to be compatible with gobind.
 func (db *Db) Bounds() *Box {
 	return &db.bounds
+}
+
+type Route struct {
+	Country, City, Name string
+}
+
+// read parses input of the form kg-osh-101 into r.
+func (r *Route) read(in string) {
+	x := strings.SplitN(in, "-", 3)
+	if len(x) == 3 {
+		r.Country = x[0]
+		r.City = x[1]
+		r.Name = x[2]
+	}
+}
+
+// Routes returns the number of routes.
+func (db *Db) Routes() int {
+	return len(db.routes)
+}
+
+// Route returns the selected route description.
+func (db *Db) Route(i int) (*Route, error) {
+	if i >= len(db.routes) {
+		return nil, errors.New("out of range")
+	}
+
+	route := &Route{}
+	route.read(db.routes[i].Metadata.Name)
+	return route, nil
+}
+
+// Points returns a []byte with the path of the specified route
+// in it encoded as pairs of (int64(lat*1e6)),(int64(lon*1e6))
+// in little endian format.
+func (db *Db) Points(i int) ([]byte, error) {
+	if i >= len(db.routes) {
+		return nil, errors.New("out of range")
+	}
+
+	gpx := db.routes[i]
+	b := &bytes.Buffer{}
+	for _, trkpt := range gpx.Trk[0].Trkseg[0].Trkpt {
+		lat := int64(trkpt.Lat * 1e6)
+		lon := int64(trkpt.Lon * 1e6)
+		binary.Write(b, binary.LittleEndian, lat)
+		binary.Write(b, binary.LittleEndian, lon)
+	}
+	return b.Bytes(), nil
 }

@@ -19,6 +19,18 @@ func init() {
 	}
 }
 
+func TestRoutes(t *testing.T) {
+	r, _ := db.Route(0)
+	exp := Route{
+		Country: "kg",
+		City:    "osh",
+		Name:    "149",
+	}
+	if *r != exp {
+		t.Errorf("%v is not expected %v", *r, exp)
+	}
+}
+
 func TestNearest(t *testing.T) {
 	// a known point is: lat 40.50263 lon 72.821976
 	// so we ask for a point near that and expect it to come back
