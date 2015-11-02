@@ -149,7 +149,7 @@ func (db *Db) Route(i int) (*Route, error) {
 }
 
 // Points returns a []byte with the path of the specified route
-// in it encoded as pairs of (int64(lat*1e6)),(int64(lon*1e6))
+// in it encoded as pairs of (int32(lat*1e6)),(int32(lon*1e6))
 // in little endian format.
 func (db *Db) Points(i int) ([]byte, error) {
 	if i >= len(db.routes) {
@@ -159,8 +159,8 @@ func (db *Db) Points(i int) ([]byte, error) {
 	gpx := db.routes[i]
 	b := &bytes.Buffer{}
 	for _, trkpt := range gpx.Trk[0].Trkseg[0].Trkpt {
-		lat := int64(trkpt.Lat * 1e6)
-		lon := int64(trkpt.Lon * 1e6)
+		lat := int32(trkpt.Lat * 1e6)
+		lon := int32(trkpt.Lon * 1e6)
 		binary.Write(b, binary.LittleEndian, lat)
 		binary.Write(b, binary.LittleEndian, lon)
 	}
