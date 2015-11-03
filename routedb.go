@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/flatbuffers/go"
+	"github.com/jeffallen/routedb/route"
 	"github.com/kellydunn/golang-geo"
 	"github.com/rndz/gpx"
 )
@@ -118,18 +120,12 @@ func (db *Db) Bounds() *Box {
 	return &db.bounds
 }
 
-type Route struct {
-	Country, City, Name string
-}
-
-// read parses input of the form kg-osh-101 into r.
-func (r *Route) read(in string) {
+func split_md(in string) (country, city, name string) {
 	x := strings.SplitN(in, "-", 3)
 	if len(x) == 3 {
-		r.Country = x[0]
-		r.City = x[1]
-		r.Name = x[2]
+		return x[0], x[1], x[2]
 	}
+	return
 }
 
 // Routes returns the number of routes.
@@ -137,15 +133,37 @@ func (db *Db) Routes() int {
 	return len(db.routes)
 }
 
-// Route returns the selected route description.
-func (db *Db) Route(i int) (*Route, error) {
+// Route returns the selected route as a flatbuffer.
+func (db *Db) Route(i int) ([]byte, error) {
 	if i >= len(db.routes) {
 		return nil, errors.New("out of range")
 	}
 
-	route := &Route{}
-	route.read(db.routes[i].Metadata.Name)
-	return route, nil
+	gpx := db.routes[i]
+	country, city, name := split_md(gpx.Metadata.Name)
+
+	b := flatbuffers.NewBuilder(0)
+
+	l1 := b.CreateString(country)
+	l2 := b.CreateString(city)
+	l3 := b.CreateString(name)
+	route.RouteStartPathVector(b, len(gpx.Trk[0].Trkseg[0].Trkpt))
+	for j := len(gpx.Trk[0].Trkseg[0].Trkpt) - 1; j >= 0; j-- {
+		trkpt := gpx.Trk[0].Trkseg[0].Trkpt[j]
+		lat := int32(trkpt.Lat * 1e6)
+		lon := int32(trkpt.Lon * 1e6)
+		route.CreateGeoPoint(b, lat, lon)
+	}
+	l4 := b.EndVector(len(gpx.Trk[0].Trkseg[0].Trkpt))
+
+	route.RouteStart(b)
+	route.RouteAddCountry(b, l1)
+	route.RouteAddCity(b, l2)
+	route.RouteAddName(b, l3)
+	route.RouteAddPath(b, l4)
+	b.Finish(route.RouteEnd(b))
+
+	return b.Bytes[b.Head():], nil
 }
 
 // Points returns a []byte with the path of the specified route

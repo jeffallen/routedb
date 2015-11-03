@@ -3,6 +3,8 @@ package routedb
 import (
 	"io/ioutil"
 	"testing"
+
+	"github.com/jeffallen/routedb/route"
 )
 
 var db *Db
@@ -20,14 +22,18 @@ func init() {
 }
 
 func TestRoutes(t *testing.T) {
-	r, _ := db.Route(0)
-	exp := Route{
-		Country: "kg",
-		City:    "osh",
-		Name:    "149",
+	buf, err := db.Route(0)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if *r != exp {
-		t.Errorf("%v is not expected %v", *r, exp)
+	route := route.GetRootAsRoute(buf, 0)
+	if string(route.Country()) != "kg" {
+		t.Errorf("route is not expected: %v", route)
+	}
+
+	explen := 477
+	if route.PathLength() != explen {
+		t.Errorf("path len is %v", route.PathLength())
 	}
 }
 
