@@ -1,0 +1,15 @@
+namespace route;
+
+struct GeoPoint {
+  lat:int;
+  lon:int;
+}
+
+table Route {
+  country:string;
+  city:string;
+  name:string;
+  path:[GeoPoint];
+}
+
+root_type Route;
