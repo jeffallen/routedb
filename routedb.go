@@ -8,7 +8,6 @@ package routedb
 import (
 	"archive/zip"
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"strings"
@@ -133,7 +132,7 @@ func (db *Db) Routes() int {
 	return len(db.routes)
 }
 
-// Route returns the selected route as a flatbuffer.
+// Route returns the selected route as a FlatBuffer.
 func (db *Db) Route(i int) ([]byte, error) {
 	if i >= len(db.routes) {
 		return nil, errors.New("out of range")
@@ -164,23 +163,4 @@ func (db *Db) Route(i int) ([]byte, error) {
 	b.Finish(route.RouteEnd(b))
 
 	return b.Bytes[b.Head():], nil
-}
-
-// Points returns a []byte with the path of the specified route
-// in it encoded as pairs of (int32(lat*1e6)),(int32(lon*1e6))
-// in little endian format.
-func (db *Db) Points(i int) ([]byte, error) {
-	if i >= len(db.routes) {
-		return nil, errors.New("out of range")
-	}
-
-	gpx := db.routes[i]
-	b := &bytes.Buffer{}
-	for _, trkpt := range gpx.Trk[0].Trkseg[0].Trkpt {
-		lat := int32(trkpt.Lat * 1e6)
-		lon := int32(trkpt.Lon * 1e6)
-		binary.Write(b, binary.LittleEndian, lat)
-		binary.Write(b, binary.LittleEndian, lon)
-	}
-	return b.Bytes(), nil
 }
